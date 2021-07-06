@@ -24,7 +24,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.DNAposY = 0.35 * game.config.height;
     this.promoterX = 0.141 * game.config.width;
 
-    this.createAnimations();
+    // this.createAnimations();
 
     this.cameras.main.setBackgroundColor("#f0fffe");
 
