@@ -8,7 +8,5 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "phaser": "^3.55.2"
-  }
+  "dependencies": {}
 }
