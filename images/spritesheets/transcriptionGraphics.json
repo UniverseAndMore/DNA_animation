@@ -1,0 +1,251 @@
+{
+	"textures": [
+		{
+			"image": "transcriptionGraphics.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 240,
+				"h": 201
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "DNAconnector.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 114,
+						"h": 35
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 114,
+						"h": 35
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 114,
+						"h": 35
+					}
+				},
+				{
+					"filename": "RNAconnector.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 114,
+						"h": 35
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 114,
+						"h": 35
+					},
+					"frame": {
+						"x": 117,
+						"y": 1,
+						"w": 114,
+						"h": 35
+					}
+				},
+				{
+					"filename": "Ttop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 47,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 38,
+						"w": 47,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Abottom.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 120,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Atop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 49,
+						"y": 120,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Cbottom.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 50,
+						"y": 38,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Ctop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 97,
+						"y": 120,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Gbottom.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 98,
+						"y": 38,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Gtop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 145,
+						"y": 120,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Tbottom.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 146,
+						"y": 38,
+						"w": 46,
+						"h": 80
+					}
+				},
+				{
+					"filename": "Utop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 193,
+						"y": 120,
+						"w": 46,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e85846b7ffa221946b4748404555d0db:3fde8fa07bf6c43341384d2d18161eba:1e32ea402993d3ffca9829d510a87d4c$"
+	}
+}

@@ -13,6 +13,12 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       "./images/spritesheets"
     );
 
+    this.load.multiatlas(
+      "transcription_graphics",
+      "./images/spritesheets/transcriptionGraphics.json",
+      "./images/spritesheets"
+    );
+
     this.load.script(
       "webfont",
       "https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"
@@ -27,6 +33,9 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.DNAposY = 0.35 * game.config.height;
     this.promoterX = 0.141 * game.config.width;
 
+    this.topDNAnucleotides = ["A", "T", "C", "G", "T"];
+    this.bottomDNAnucleotides = this.createBottomDNAnucleotides();
+
     this.loadWebFonts();
     this.createAnimations();
 
@@ -36,6 +45,41 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.createDragListeners();
 
     this.createZoomBox();
+    this.createGameBox();
+
+    this.createFreeNucleotides();
+  }
+
+  createBottomDNAnucleotides() {
+    const retVal = [];
+
+    for (var i = 0; i < this.topDNAnucleotides.length; i++) {
+      let bottomNucleotide;
+      switch (this.topDNAnucleotides[i]) {
+        case "A":
+          bottomNucleotide = "T";
+          break;
+
+        case "T":
+          bottomNucleotide = "A";
+          break;
+
+        case "G":
+          bottomNucleotide = "C";
+          break;
+
+        case "C":
+          bottomNucleotide = "G";
+          break;
+
+        default:
+          break;
+      }
+
+      retVal.push(bottomNucleotide);
+    }
+
+    return retVal;
   }
 
   loadWebFonts() {
@@ -183,7 +227,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.RNApoly.vx = 0;
     this.RNApoly.vy = 0;
     this.dragCoeff = 0.09;
-    this.brownianMotionCoeff = 0.044;
+    this.brownianMotionCoeff = 0.05;
 
     this.maxRNAPX =
       game.config.width - 0.5 * this.RNApoly.width * this.RNApoly.scaleX;
@@ -617,17 +661,6 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
     this.zoomBoxContainer = this.add.container();
 
-    this.zoomBoxBG = this.add.graphics();
-    this.zoomBoxBG.fillStyle(0xafcfd8);
-    this.zoomBoxBG.fillRect(
-      -0.5 * this.smallBoxWidth,
-      -0.5 * this.smallBoxHeight,
-      this.smallBoxWidth,
-      this.smallBoxHeight
-    );
-
-    this.zoomBoxBG.setAlpha(0);
-
     this.zoomBoxBorder = this.add.graphics();
     this.zoomBoxBorder.lineStyle(0.7, 0x44336a);
     this.zoomBoxBorder.strokeRect(
@@ -637,13 +670,90 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       this.smallBoxHeight
     );
 
-    this.zoomBoxContainer.add(this.zoomBoxBG);
+    this.gameBoxContainer = this.add.container();
+    this.zoomBoxContainer.add(this.gameBoxContainer);
     this.zoomBoxContainer.add(this.zoomBoxBorder);
+
+    this.zoomBoxBG = this.add.graphics();
+    this.zoomBoxBG.fillStyle(0xafcfd8);
+    this.zoomBoxBG.fillRect(
+      -0.5 * this.smallBoxWidth,
+      -0.5 * this.smallBoxHeight,
+      this.smallBoxWidth,
+      this.smallBoxHeight
+    );
+
+    this.gameBoxContainer.setAlpha(0);
+
+    this.gameBoxContainer.add(this.zoomBoxBG);
 
     this.zoomBoxContainer.setVisible(false);
 
     this.zoomBoxContainer.x = this.promoterX;
     this.zoomBoxContainer.y = this.DNAposY;
+  }
+
+  createGameBox() {
+    const DNAstrandHeight = 0.08 * this.smallBoxHeight;
+    const DNAstrandOffsetY = 0.422 * this.smallBoxHeight;
+
+    this.DNAtopStrand = this.add.graphics();
+    this.DNAtopStrand.fillStyle(0xa295c5);
+    this.DNAtopStrand.fillRect(
+      -0.5 * this.smallBoxWidth,
+      -DNAstrandOffsetY - 0.5 * DNAstrandHeight,
+      this.smallBoxWidth,
+      DNAstrandHeight
+    );
+
+    this.DNAbottomStrand = this.add.graphics();
+    this.DNAbottomStrand.fillStyle(0x63568f);
+    this.DNAbottomStrand.fillRect(
+      -0.5 * this.smallBoxWidth,
+      DNAstrandOffsetY - 0.5 * DNAstrandHeight,
+      this.smallBoxWidth,
+      DNAstrandHeight
+    );
+
+    this.gameBoxContainer.add(this.DNAtopStrand);
+    this.gameBoxContainer.add(this.DNAbottomStrand);
+
+    this.nucleotideGraphics = this.add.container();
+    this.gameBoxContainer.add(this.nucleotideGraphics);
+
+    //*********CREATE DNA NUCLEOTIDES **********//
+
+    this.DNAnucleotideDeltaX = this.smallBoxWidth / 5;
+
+    this.topDNAnucleotides.forEach((base, index) => {
+      var topDNAnucleotide = this.add
+        .sprite(
+          -0.5 * this.smallBoxWidth +
+            0.5 * this.DNAnucleotideDeltaX +
+            index * this.DNAnucleotideDeltaX,
+          -DNAstrandOffsetY + 0.5 * DNAstrandHeight,
+          "transcription_graphics",
+          base + "top.png"
+        )
+        .setScale(1 / 16)
+        .setOrigin(0.5, 0.12);
+      this.nucleotideGraphics.add(topDNAnucleotide);
+    });
+
+    this.bottomDNAnucleotides.forEach((base, index) => {
+      var bottomDNAnucleotide = this.add
+        .sprite(
+          -0.5 * this.smallBoxWidth +
+            0.5 * this.DNAnucleotideDeltaX +
+            index * this.DNAnucleotideDeltaX,
+          DNAstrandOffsetY - 0.5 * DNAstrandHeight,
+          "transcription_graphics",
+          base + "bottom.png"
+        )
+        .setScale(1 / 16)
+        .setOrigin(0.5, 0.88);
+      this.nucleotideGraphics.add(bottomDNAnucleotide);
+    });
   }
 
   showSmallBox() {
@@ -653,7 +763,8 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.smallBoxContainer,
       alpha: 1,
-      duration: 800,
+      duration: 500,
+      delay: 400,
       onComplete: this.expandZoomBox,
       onCompleteScope: this,
     });
@@ -668,30 +779,35 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: 0.61 * game.config.height,
       scale: 10,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.RNApoly,
       y: 0.2 * game.config.height,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.DNAcontainer,
       y: 0.2 * game.config.height,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.smallBoxContainer,
       y: 0.2 * game.config.height,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
-      targets: this.zoomBoxBG,
+      targets: this.gameBoxContainer,
       alpha: 1,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
@@ -699,6 +815,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
       scaleX: 3,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
@@ -706,6 +823,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
       scaleX: 11.75,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
@@ -713,6 +831,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
       scaleX: 8.65,
       duration: 800,
+      ease: "Sine.Out",
     });
 
     this.tweens.add({
@@ -720,6 +839,43 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
       scaleX: 14,
       duration: 800,
+      ease: "Sine.Out",
     });
+  }
+
+  createFreeNucleotides() {
+    this.freeNucleotides = [];
+
+    const nucleotidesToCreate = ["A", "T", "G", "C", "U"];
+    nucleotidesToCreate.forEach((base, index) => {
+      this.createFreeNucleotide(base, index);
+    });
+  }
+
+  createFreeNucleotide(base, index) {
+    let nucleotide = this.add.container().setScale(1 / 16);
+
+    nucleotide.base = base;
+    nucleotide.index = index;
+
+    const connectorType = base === "T" ? "DNA" : "RNA";
+
+    nucleotide.connectorL = this.add
+      .sprite(0, 0, "transcription_graphics", connectorType + "connector.png")
+      .setOrigin(0.68, 1.85);
+    nucleotide.connectorR = this.add
+      .sprite(0, 0, "transcription_graphics", connectorType + "connector.png")
+      .setOrigin(0.68, 1.85);
+
+    nucleotide.add(nucleotide.connectorL);
+    nucleotide.add(nucleotide.connectorR);
+
+    nucleotide.add(
+      this.add.sprite(0, 0, "transcription_graphics", base + "top.png")
+    );
+
+    this.gameBoxContainer.add(nucleotide);
+
+    this.freeNucleotides.push(nucleotide);
   }
 }
