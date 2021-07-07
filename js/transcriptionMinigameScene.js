@@ -20,137 +20,134 @@ class TranscriptionMinigameScene extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.setBackgroundColor("#f0fffe");
+
     this.isRNApolyLockedIn = false;
+    this.DNAopen = false;
     this.DNAposY = 0.35 * game.config.height;
     this.promoterX = 0.141 * game.config.width;
 
-    // this.createAnimations();
+    this.loadWebFonts();
+    this.createAnimations();
 
-    this.cameras.main.setBackgroundColor("#f0fffe");
-
-    this.createInstructionBox();
     this.createDNA();
     this.createRNAPoly();
     this.createPromoterBox();
     this.createDragListeners();
+
+    this.createZoomBox();
+  }
+
+  loadWebFonts() {
+    this.events.on("WEBFONT_LOADED", this.createInstructionBox, this);
+
+    var scene = this;
+
+    WebFont.load({
+      google: {
+        families: ["Lato"],
+      },
+      active: function () {
+        scene.events.emit("WEBFONT_LOADED");
+      },
+    });
   }
 
   createAnimations() {
     const openBothFrames = [];
-    const openLeftFramesClosest = [];
-    const openRightFramesClosest = [];
-    const openLeftFramesNextClosest = [];
-    const openRightFramesNextClosest = [];
+    const openLeft1Frames = [];
+    const openRight1Frames = [];
+    const openLeft2Frames = [];
+    const openRight2Frames = [];
 
     for (var i = 1; i <= 30; i++) {
       let frameNameBoth = "open_both";
-      let frameNameLeft = "open_left_1";
-      let frameNameRight = "open_right_1";
+      let frameNameLeft1 = "open_left_1";
+      let frameNameRight1 = "open_right_1";
+      let frameNameLeft2 = "open_left_2";
+      let frameNameRight2 = "open_right_2";
       if (i < 10) {
-        frameNameBoth += "000";
-        frameNameLeft += "000";
-        frameNameRight += "000";
+        frameNameBoth += "000" + String(i) + ".png";
+        frameNameLeft1 += "000" + String(i) + ".png";
+        frameNameRight1 += "000" + String(i) + ".png";
+        frameNameLeft2 += "000" + String(i) + ".png";
+        frameNameRight2 += "000" + String(i) + ".png";
       } else {
-        frameNameBoth += "00";
-        frameNameLeft += "00";
-        frameNameRight += "00";
+        frameNameBoth += "00" + String(i) + ".png";
+        frameNameLeft1 += "00" + String(i) + ".png";
+        frameNameRight1 += "00" + String(i) + ".png";
+        frameNameLeft2 += "00" + String(i) + ".png";
+        frameNameRight2 += "00" + String(i) + ".png";
       }
-
-      frameNameBoth += String(i) + ".png";
-      frameNameLeft += String(i) + ".png";
-      frameNameRight += String(i) + ".png";
 
       openBothFrames.push({ key: "DNA_animation", frame: frameNameBoth });
-      openLeftFramesClosest.push({
+      openLeft1Frames.push({
         key: "DNA_animation",
-        frame: frameNameLeft,
+        frame: frameNameLeft1,
       });
-      openRightFramesClosest.push({
+      openRight1Frames.push({
         key: "DNA_animation",
-        frame: frameNameRight,
+        frame: frameNameRight1,
       });
-      openLeftFramesNextClosest.push({
+      openLeft2Frames.push({
         key: "DNA_animation",
-        frame: "open_left_10001.png",
+        frame: frameNameLeft2,
       });
-      openRightFramesNextClosest.push({
+      openRight2Frames.push({
         key: "DNA_animation",
-        frame: "open_left_10001.png",
-      });
-    }
-
-    for (var i = 1; i <= 15; i++) {
-      let frameNameLeftClosest = "open_left_2";
-      let frameNameRightClosest = "open_right_2";
-      let frameNameLeftNextClosest = "open_left_1";
-      let frameNameRightNextClosest = "open_right_1";
-      if (i < 10) {
-        frameNameLeftClosest += "000";
-        frameNameRightClosest += "000";
-        frameNameLeftNextClosest += "000";
-        frameNameRightNextClosest += "000";
-      } else {
-        frameNameLeftClosest += "00";
-        frameNameRightClosest += "00";
-        frameNameLeftNextClosest += "00";
-        frameNameRightNextClosest += "00";
-      }
-
-      frameNameLeftClosest += String(i) + ".png";
-      frameNameRightClosest += String(i) + ".png";
-      frameNameLeftNextClosest += String(i) + ".png";
-      frameNameRightNextClosest += String(i) + ".png";
-
-      openLeftFramesClosest.push({
-        key: "DNA_animation",
-        frame: frameNameLeftClosest,
-      });
-      openRightFramesClosest.push({
-        key: "DNA_animation",
-        frame: frameNameRightClosest,
-      });
-      openLeftFramesNextClosest.push({
-        key: "DNA_animation",
-        frame: frameNameLeftNextClosest,
-      });
-      openRightFramesNextClosest.push({
-        key: "DNA_animation",
-        frame: frameNameRightNextClosest,
+        frame: frameNameRight2,
       });
     }
+
+    const frameRate1 = 60;
+    const frameRate2 = 15;
 
     this.anims.create({
       key: "open_both",
       frames: openBothFrames,
-      frameRate: 60,
+      frameRate: frameRate1,
     });
 
     this.anims.create({
-      key: "open_left_closest",
-      frames: openLeftFramesClosest,
-      frameRate: 60,
+      key: "open_left_closest_1",
+      frames: openLeft1Frames,
+      frameRate: frameRate1,
     });
 
     this.anims.create({
-      key: "open_right_closest",
-      frames: openRightFramesClosest,
-      frameRate: 60,
+      key: "open_right_closest_1",
+      frames: openRight1Frames,
+      frameRate: frameRate1,
     });
 
     this.anims.create({
-      key: "open_left_next_closest",
-      frames: openLeftFramesNextClosest,
-      frameRate: 60,
+      key: "open_left_closest_2",
+      frames: openLeft2Frames.slice(0, 15),
+      frameRate: frameRate2,
     });
 
     this.anims.create({
-      key: "open_right_next_closest",
-      frames: openRightFramesNextClosest,
-      frameRate: 60,
+      key: "open_right_closest_2",
+      frames: openRight2Frames.slice(0, 15),
+      frameRate: frameRate2,
+    });
+
+    this.anims.create({
+      key: "open_left_next_closest_2",
+      frames: openLeft1Frames.slice(0, 15),
+      frameRate: frameRate2,
+    });
+
+    this.anims.create({
+      key: "open_right_next_closest_2",
+      frames: openRight1Frames.slice(0, 15),
+      frameRate: frameRate2,
     });
   }
 
   createDNA() {
+    this.DNAcontainer = this.add.container();
+    this.DNAcontainer.y = this.DNAposY;
     this.DNA_strand = [];
 
     const numDNApieces = 25;
@@ -161,10 +158,11 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         .setOrigin(0.44, 0.5);
       DNApiece.setFrame("open_left_10001.png");
       DNApiece.x = i * DNApiece.width * 0.68;
-      DNApiece.y = this.DNAposY;
       this.DNA_strand.push(DNApiece);
       DNApiece.startingX = DNApiece.x;
       DNApiece.startingY = DNApiece.y;
+
+      this.DNAcontainer.add(DNApiece);
     }
 
     this.DNApieceWidth = this.DNA_strand[0].width * 0.68;
@@ -268,26 +266,21 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
     this.instructionBoxGroup.add(instructionBoxGraphics);
 
-    var add = this.add;
+    this.instructionBoxGroup.add(
+      this.add.text(
+        instructionBoxGraphicsX + 16,
+        instructionBoxGraphicsY + 14,
+        "Move the RNA polymerase\nonto the promoter region\nto begin transcription",
+        {
+          fontFamily: "Lato",
+          fontSize: 18,
+          color: "#ffffff",
+          align: "center",
+        }
+      )
+    );
 
-    WebFont.load({
-      google: {
-        families: ["Lato"],
-      },
-      active: function () {
-        add.text(
-          instructionBoxGraphicsX + 16,
-          instructionBoxGraphicsY + 14,
-          "Move the RNA polymerase\nonto the promoter region\nto begin transcription",
-          {
-            fontFamily: "Lato",
-            fontSize: 18,
-            color: "#ffffff",
-            align: "center",
-          }
-        );
-      },
-    });
+    this.instructionBoxGroup.setDepth(-2);
   }
 
   createPromoterBox() {
@@ -306,7 +299,9 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isRNApolyLockedIn) {
-      this.updateDNAframes();
+      if (this.DNAopen) {
+        this.updateDNAframes();
+      }
     } else {
       if (this.RNApoly.isDragging) {
       } else {
@@ -386,16 +381,64 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
     this.promoterBox.setVisible(false);
     this.instructionBoxGroup.clear(true);
+    this.instructionBoxGroup = null;
 
-    // this.playDNAopeningAnim();
+    this.playDNAopeningAnimPart1();
+    this.showSmallBox();
   }
 
-  playDNAopeningAnim() {
-    this.DNA_strand[1].play("open_right_next_closest");
-    this.DNA_strand[2].play("open_right_closest");
+  playDNAopeningAnimPart1() {
+    this.DNA_strand[2].x =
+      this.DNA_strand[2].startingX - 0.157 * this.DNApieceWidth;
+    this.DNA_strand[2].y =
+      this.DNA_strand[2].startingY - 0.02 * this.DNApieceWidth;
+
+    this.DNA_strand[3].x =
+      this.DNA_strand[3].startingX - 0.11 * this.DNApieceWidth;
+    this.DNA_strand[3].y =
+      this.DNA_strand[3].startingY - 0.02 * this.DNApieceWidth;
+
+    this.DNA_strand[2].play("open_right_closest_1");
     this.DNA_strand[3].play("open_both");
-    this.DNA_strand[4].play("open_left_closest");
-    this.DNA_strand[5].play("open_left_next_closest");
+    this.DNA_strand[4].play("open_left_closest_1");
+
+    this.DNA_strand[3].on(
+      Phaser.Animations.Events.ANIMATION_COMPLETE,
+      function () {
+        this.playDNAopeningAnimPart2();
+      },
+      this
+    );
+  }
+
+  playDNAopeningAnimPart2() {
+    this.DNA_strand[1].x =
+      this.DNA_strand[1].startingX - 0.157 * this.DNApieceWidth;
+    this.DNA_strand[1].y =
+      this.DNA_strand[1].startingY - 0.02 * this.DNApieceWidth;
+
+    this.DNA_strand[2].x =
+      this.DNA_strand[2].startingX - 0.22 * this.DNApieceWidth;
+    this.DNA_strand[2].y =
+      this.DNA_strand[2].startingY - 0.19 * this.DNApieceWidth;
+
+    this.DNA_strand[4].x =
+      this.DNA_strand[4].startingX - 0.26 * this.DNApieceWidth;
+    this.DNA_strand[4].y =
+      this.DNA_strand[4].startingY - 0.043 * this.DNApieceWidth;
+
+    this.DNA_strand[1].play("open_right_next_closest_2");
+    this.DNA_strand[2].play("open_right_closest_2");
+    this.DNA_strand[4].play("open_left_closest_2");
+    this.DNA_strand[5].play("open_left_next_closest_2");
+
+    this.DNA_strand[5].on(
+      Phaser.Animations.Events.ANIMATION_COMPLETE,
+      function () {
+        this.DNAopen = true;
+      },
+      this
+    );
   }
 
   updateDNAframes() {
@@ -486,5 +529,197 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         twoRightOfClosest.y = twoRightOfClosest.startingY; //- 0.0 * this.DNApieceWidth;
       }
     }
+  }
+
+  /**************ZOOM BOX**************/
+  createZoomBox() {
+    this.smallBoxWidth = 0.05 * game.config.width;
+    this.smallBoxHeight = 0.04 * game.config.width;
+
+    this.smallBoxContainer = this.add.container();
+
+    this.smallBoxBorder = this.add.graphics();
+    this.smallBoxBorder.lineStyle(3, 0x44336a);
+    this.smallBoxBorder.strokeRect(
+      -0.5 * this.smallBoxWidth,
+      -0.5 * this.smallBoxHeight,
+      this.smallBoxWidth,
+      this.smallBoxHeight
+    );
+
+    this.smallBoxLineTL = this.add
+      .line(
+        this.promoterX - 0.5 * this.smallBoxWidth,
+        this.DNAposY - 0.5 * this.smallBoxHeight,
+        0,
+        0,
+        this.smallBoxWidth,
+        0,
+        0x44336a
+      )
+      .setOrigin(0)
+      .setRotation((20.4 * Math.PI) / 180)
+      .setScale(0, 1);
+
+    this.smallBoxLineTR = this.add
+      .line(
+        this.promoterX + 0.5 * this.smallBoxWidth,
+        this.DNAposY - 0.5 * this.smallBoxHeight,
+        0,
+        0,
+        this.smallBoxWidth,
+        0,
+        0x44336a
+      )
+      .setOrigin(0)
+      .setRotation((4.8 * Math.PI) / 180)
+      .setScale(0, 1);
+
+    this.smallBoxLineBL = this.add
+      .line(
+        this.promoterX - 0.5 * this.smallBoxWidth,
+        this.DNAposY + 0.5 * this.smallBoxHeight,
+        0,
+        0,
+        this.smallBoxWidth,
+        0,
+        0x44336a
+      )
+      .setOrigin(0)
+      .setRotation((72.1 * Math.PI) / 180)
+      .setScale(0, 1);
+
+    this.smallBoxLineBR = this.add
+      .line(
+        this.promoterX + 0.5 * this.smallBoxWidth,
+        this.DNAposY + 0.5 * this.smallBoxHeight,
+        0,
+        0,
+        this.smallBoxWidth,
+        0,
+        0x44336a
+      )
+      .setOrigin(0)
+      .setRotation((35 * Math.PI) / 180)
+      .setScale(0, 1);
+
+    this.smallBoxLineTL.setLineWidth(1.5, 3);
+    this.smallBoxLineTR.setLineWidth(1.5, 3);
+    this.smallBoxLineBL.setLineWidth(1.5, 3);
+    this.smallBoxLineBR.setLineWidth(1.5, 3);
+
+    this.smallBoxContainer.add(this.smallBoxBorder);
+
+    this.smallBoxContainer.setVisible(false);
+
+    this.smallBoxContainer.x = this.promoterX;
+    this.smallBoxContainer.y = this.DNAposY;
+
+    this.zoomBoxContainer = this.add.container();
+
+    this.zoomBoxBG = this.add.graphics();
+    this.zoomBoxBG.fillStyle(0xafcfd8);
+    this.zoomBoxBG.fillRect(
+      -0.5 * this.smallBoxWidth,
+      -0.5 * this.smallBoxHeight,
+      this.smallBoxWidth,
+      this.smallBoxHeight
+    );
+
+    this.zoomBoxBG.setAlpha(0);
+
+    this.zoomBoxBorder = this.add.graphics();
+    this.zoomBoxBorder.lineStyle(0.7, 0x44336a);
+    this.zoomBoxBorder.strokeRect(
+      -0.5 * this.smallBoxWidth,
+      -0.5 * this.smallBoxHeight,
+      this.smallBoxWidth,
+      this.smallBoxHeight
+    );
+
+    this.zoomBoxContainer.add(this.zoomBoxBG);
+    this.zoomBoxContainer.add(this.zoomBoxBorder);
+
+    this.zoomBoxContainer.setVisible(false);
+
+    this.zoomBoxContainer.x = this.promoterX;
+    this.zoomBoxContainer.y = this.DNAposY;
+  }
+
+  showSmallBox() {
+    this.smallBoxContainer.setVisible(true);
+    this.smallBoxContainer.setAlpha(0);
+
+    this.tweens.add({
+      targets: this.smallBoxContainer,
+      alpha: 1,
+      duration: 800,
+      onComplete: this.expandZoomBox,
+      onCompleteScope: this,
+    });
+  }
+
+  expandZoomBox() {
+    this.zoomBoxContainer.setVisible(true);
+
+    this.tweens.add({
+      targets: this.zoomBoxContainer,
+      x: 0.5 * game.config.width,
+      y: 0.61 * game.config.height,
+      scale: 10,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.RNApoly,
+      y: 0.2 * game.config.height,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.DNAcontainer,
+      y: 0.2 * game.config.height,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.smallBoxContainer,
+      y: 0.2 * game.config.height,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.zoomBoxBG,
+      alpha: 1,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.smallBoxLineTL,
+      y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
+      scaleX: 3,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.smallBoxLineTR,
+      y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
+      scaleX: 11.75,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.smallBoxLineBL,
+      y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
+      scaleX: 8.65,
+      duration: 800,
+    });
+
+    this.tweens.add({
+      targets: this.smallBoxLineBR,
+      y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
+      scaleX: 14,
+      duration: 800,
+    });
   }
 }
