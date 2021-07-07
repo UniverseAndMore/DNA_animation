@@ -28,34 +28,74 @@ class TranscriptionMinigameScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor("#f0fffe");
 
-    this.isRNApolyLockedIn = false;
-    this.DNAopen = false;
-    this.DNAposY = 0.35 * game.config.height;
+    this.DNAposY1 = 0.35 * game.config.height;
+    this.DNAposY2 = 0.14 * game.config.height;
+
     this.promoterX = 0.141 * game.config.width;
 
     this.topDNAnucleotides = ["A", "T", "C", "G", "T"];
-    this.bottomDNAnucleotides = this.createBottomDNAnucleotides();
+    this.bottomDNAnucleotides = this.createBottomDNAnucleotides(
+      this.topDNAnucleotides
+    );
+
+    this.isRNApolyLockedIn = false;
+    this.DNAopen = false;
 
     this.loadWebFonts();
     this.createAnimations();
 
-    this.createDNA();
+    this.createDNAStrand();
     this.createRNAPoly();
     this.createPromoterBox();
-    this.createDragListeners();
 
-    this.createZoomBox();
+    this.createSmallBox();
     this.createGameBox();
+
+    this.createDragListeners();
 
     this.createFreeNucleotides();
   }
 
-  createBottomDNAnucleotides() {
+  update(time, delta) {
+    const timeFactor = (delta * 60) / 1000;
+    if (this.isRNApolyLockedIn) {
+      if (this.DNAopen) {
+        this.updateDNAframes();
+      }
+    } else {
+      if (this.RNApoly.isDragging) {
+      } else {
+        this.updateRNApolyKinematics(timeFactor);
+        this.checkRNAPolyBoundaries();
+      }
+
+      this.checkIfRNAPolyLockedIn();
+    }
+
+    this.updateNucleotideKinematics(timeFactor);
+  }
+
+  loadWebFonts() {
+    this.events.on("WEBFONT_LOADED", this.createInstructionBox, this);
+
+    var scene = this;
+
+    WebFont.load({
+      google: {
+        families: ["Lato"],
+      },
+      active: function () {
+        scene.events.emit("WEBFONT_LOADED");
+      },
+    });
+  }
+
+  createBottomDNAnucleotides(topDNAnucleotides) {
     const retVal = [];
 
-    for (var i = 0; i < this.topDNAnucleotides.length; i++) {
+    for (var i = 0; i < topDNAnucleotides.length; i++) {
       let bottomNucleotide;
-      switch (this.topDNAnucleotides[i]) {
+      switch (topDNAnucleotides[i]) {
         case "A":
           bottomNucleotide = "T";
           break;
@@ -80,21 +120,6 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     }
 
     return retVal;
-  }
-
-  loadWebFonts() {
-    this.events.on("WEBFONT_LOADED", this.createInstructionBox, this);
-
-    var scene = this;
-
-    WebFont.load({
-      google: {
-        families: ["Lato"],
-      },
-      active: function () {
-        scene.events.emit("WEBFONT_LOADED");
-      },
-    });
   }
 
   createAnimations() {
@@ -189,9 +214,9 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     });
   }
 
-  createDNA() {
+  createDNAStrand() {
     this.DNAcontainer = this.add.container();
-    this.DNAcontainer.y = this.DNAposY;
+    this.DNAcontainer.y = this.DNAposY1;
     this.DNA_strand = [];
 
     const numDNApieces = 25;
@@ -224,10 +249,20 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       .setAlpha(0.6)
       .setInteractive();
 
+    this.RNApoly.minX = 0.5 * this.RNApoly.width * this.RNApoly.scaleX;
+    this.RNApoly.maxX = game.config.width - this.RNApoly.minX;
+    this.RNApoly.minY = 0.5 * this.RNApoly.height * this.RNApoly.scaleY;
+    this.RNApoly.maxY = game.config.height - this.RNApoly.minY;
+
+    this.RNApoly.startingRotation = 0;
+
     this.RNApoly.vx = 0;
     this.RNApoly.vy = 0;
-    this.dragCoeff = 0.09;
-    this.brownianMotionCoeff = 0.05;
+    this.RNApoly.brownianMotionCoeff = 0.05;
+    this.RNApoly.dragCoeff = 0.09;
+
+    this.RNApoly.sendToStartingPosOnRelease = false;
+    this.RNApoly.bringToFrontOnDragStart = false;
 
     this.maxRNAPX =
       game.config.width - 0.5 * this.RNApoly.width * this.RNApoly.scaleX;
@@ -238,30 +273,35 @@ class TranscriptionMinigameScene extends Phaser.Scene {
   }
 
   createDragListeners() {
+    var gameBoxContainer = this.gameBoxContainer;
+
     this.input.on("dragstart", function (pointer, gameObject) {
+      if (gameObject.sendBackToStartTween) {
+        gameObject.sendBackToStartTween.stop();
+        gameObject.sendBackToStartTween = null;
+        gameObject.tweenRunning = false;
+      }
+
       gameObject.vx = 0;
       gameObject.vy = 0;
+      gameObject.setRotation(0);
       gameObject.isDragging = true;
+
+      if (gameObject.bringToFrontOnDragStart) {
+        gameBoxContainer.bringToTop(gameObject);
+      }
     });
 
-    this.RNApolyDragListener = this.input.on("drag", function (
-      pointer,
-      gameObject,
-      dragX,
-      dragY
-    ) {
+    this.input.on("drag", function (pointer, gameObject, dragX, dragY) {
       if (gameObject.isDragging) {
-        const objWidth = gameObject.width * gameObject.scaleX;
-        const objHeight = gameObject.height * gameObject.scaleY;
-
         const clampedDragX = Math.min(
-          Math.max(0.5 * objWidth, dragX),
-          game.config.width - 0.5 * objWidth
+          Math.max(gameObject.minX, dragX),
+          gameObject.maxX
         );
 
         const clampedDragY = Math.min(
-          Math.max(0.5 * objHeight, dragY),
-          game.config.height - 0.5 * objHeight
+          Math.max(gameObject.minY, dragY),
+          gameObject.maxY
         );
 
         gameObject.vx = clampedDragX - gameObject.x;
@@ -272,8 +312,14 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       }
     });
 
+    var scene = this;
+
     this.input.on("dragend", function (pointer, gameObject) {
       gameObject.isDragging = false;
+
+      if (gameObject.sendToStartingPosOnRelease) {
+        scene.sendBackToStartingPos(gameObject);
+      }
     });
   }
 
@@ -335,45 +381,65 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.promoterBox.fillStyle(0xdad5e6);
     this.promoterBox.fillRect(
       this.promoterX - 0.5 * promoterWidth,
-      this.DNAposY - 0.5 * promoterHeight,
+      this.DNAposY1 - 0.5 * promoterHeight,
       promoterWidth,
       promoterHeight
     );
   }
 
-  update(time, delta) {
-    if (this.isRNApolyLockedIn) {
-      if (this.DNAopen) {
-        this.updateDNAframes();
-      }
-    } else {
-      if (this.RNApoly.isDragging) {
-      } else {
-        const timeFactor = (delta * 60) / 1000;
-        this.updateRNApolyKinematics(timeFactor);
-        this.checkRNApolyBoundaries();
-      }
-
-      this.checkIfRNApolyLockedIn();
-    }
-  }
-
   updateRNApolyKinematics(timeFactor) {
-    this.RNApoly.vx *= 1 - this.dragCoeff * timeFactor;
-    this.RNApoly.vy *= 1 - this.dragCoeff * timeFactor;
+    this.RNApoly.vx *= 1 - this.RNApoly.dragCoeff * timeFactor;
+    this.RNApoly.vy *= 1 - this.RNApoly.dragCoeff * timeFactor;
     this.RNApoly.x += this.RNApoly.vx * timeFactor;
     this.RNApoly.y += this.RNApoly.vy * timeFactor;
     this.RNApoly.vx +=
       timeFactor *
-      (-this.brownianMotionCoeff +
-        2 * this.brownianMotionCoeff * Math.random());
+      (-this.RNApoly.brownianMotionCoeff +
+        2 * this.RNApoly.brownianMotionCoeff * Math.random());
     this.RNApoly.vy +=
       timeFactor *
-      (-this.brownianMotionCoeff +
-        2 * this.brownianMotionCoeff * Math.random());
+      (-this.RNApoly.brownianMotionCoeff +
+        2 * this.RNApoly.brownianMotionCoeff * Math.random());
   }
 
-  checkRNApolyBoundaries() {
+  updateNucleotideKinematics(timeFactor) {
+    this.freeNucleotides.forEach((nucleotide) => {
+      if (!nucleotide.tweenRunning && !nucleotide.isDragging) {
+        nucleotide.vx *= 1 - nucleotide.dragCoeff * timeFactor;
+        nucleotide.vy *= 1 - nucleotide.dragCoeff * timeFactor;
+
+        nucleotide.x += nucleotide.vx * timeFactor;
+        nucleotide.y += nucleotide.vy * timeFactor;
+
+        if (nucleotide.x > nucleotide.maxStartingX) {
+          nucleotide.x = nucleotide.maxStartingX;
+          nucleotide.vx *= -1;
+        } else if (nucleotide.x < nucleotide.minStartingX) {
+          nucleotide.x = nucleotide.minStartingX;
+          nucleotide.vx *= -1;
+        }
+
+        if (nucleotide.y > nucleotide.maxStartingY) {
+          nucleotide.y = nucleotide.maxStartingY;
+          nucleotide.vy *= -1;
+        } else if (nucleotide.y < nucleotide.minStartingY) {
+          nucleotide.y = nucleotide.minStartingY;
+          nucleotide.vy *= -1;
+        }
+
+        nucleotide.vx +=
+          timeFactor *
+          (-nucleotide.brownianMotionCoeff +
+            2 * nucleotide.brownianMotionCoeff * Math.random());
+        nucleotide.vy +=
+          timeFactor *
+          (-nucleotide.brownianMotionCoeff +
+            2 * nucleotide.brownianMotionCoeff * Math.random());
+      }
+    });
+  }
+
+  checkRNAPolyBoundaries() {
     if (this.RNApoly.x > this.maxRNAPX) {
       this.RNApoly.x -= 2 * (this.RNApoly.x - this.maxRNAPX);
       this.RNApoly.vx *= -1;
@@ -399,17 +465,17 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     }
   }
 
-  checkIfRNApolyLockedIn() {
+  checkIfRNAPolyLockedIn() {
     const deltaX = this.RNApoly.x - this.promoterX;
-    const deltaY = this.RNApoly.y - this.DNAposY;
+    const deltaY = this.RNApoly.y - this.DNAposY1;
     const distance = Math.pow(deltaX * deltaX + deltaY * deltaY, 0.5);
 
     if (distance < 0.025 * game.config.width) {
-      this.snapInRNApoly();
+      this.snapInRNAPoly();
     }
   }
 
-  snapInRNApoly() {
+  snapInRNAPoly() {
     this.isRNApolyLockedIn = true;
     this.input.disable(this.RNApoly);
 
@@ -418,7 +484,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.RNApoly,
       x: this.promoterX,
-      y: this.DNAposY,
+      y: this.DNAposY1,
       duration: 250,
       ease: "Sine.easeOut",
     });
@@ -575,9 +641,9 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     }
   }
 
-  /**************ZOOM BOX**************/
-  createZoomBox() {
-    this.smallBoxWidth = 0.05 * game.config.width;
+  /**************GAME BOX**************/
+  createSmallBox() {
+    this.smallBoxWidth = 0.0517 * game.config.width;
     this.smallBoxHeight = 0.04 * game.config.width;
 
     this.smallBoxContainer = this.add.container();
@@ -594,7 +660,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.smallBoxLineTL = this.add
       .line(
         this.promoterX - 0.5 * this.smallBoxWidth,
-        this.DNAposY - 0.5 * this.smallBoxHeight,
+        this.DNAposY1 - 0.5 * this.smallBoxHeight,
         0,
         0,
         this.smallBoxWidth,
@@ -602,13 +668,13 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         0x44336a
       )
       .setOrigin(0)
-      .setRotation((20.4 * Math.PI) / 180)
+      .setRotation((33.5 * Math.PI) / 180)
       .setScale(0, 1);
 
     this.smallBoxLineTR = this.add
       .line(
         this.promoterX + 0.5 * this.smallBoxWidth,
-        this.DNAposY - 0.5 * this.smallBoxHeight,
+        this.DNAposY1 - 0.5 * this.smallBoxHeight,
         0,
         0,
         this.smallBoxWidth,
@@ -616,13 +682,13 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         0x44336a
       )
       .setOrigin(0)
-      .setRotation((4.8 * Math.PI) / 180)
+      .setRotation((5.63 * Math.PI) / 180)
       .setScale(0, 1);
 
     this.smallBoxLineBL = this.add
       .line(
         this.promoterX - 0.5 * this.smallBoxWidth,
-        this.DNAposY + 0.5 * this.smallBoxHeight,
+        this.DNAposY1 + 0.5 * this.smallBoxHeight,
         0,
         0,
         this.smallBoxWidth,
@@ -630,13 +696,13 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         0x44336a
       )
       .setOrigin(0)
-      .setRotation((72.1 * Math.PI) / 180)
+      .setRotation((78 * Math.PI) / 180)
       .setScale(0, 1);
 
     this.smallBoxLineBR = this.add
       .line(
         this.promoterX + 0.5 * this.smallBoxWidth,
-        this.DNAposY + 0.5 * this.smallBoxHeight,
+        this.DNAposY1 + 0.5 * this.smallBoxHeight,
         0,
         0,
         this.smallBoxWidth,
@@ -644,115 +710,125 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         0x44336a
       )
       .setOrigin(0)
-      .setRotation((35 * Math.PI) / 180)
+      .setRotation((35.3 * Math.PI) / 180)
       .setScale(0, 1);
 
-    this.smallBoxLineTL.setLineWidth(1.5, 3);
-    this.smallBoxLineTR.setLineWidth(1.5, 3);
-    this.smallBoxLineBL.setLineWidth(1.5, 3);
-    this.smallBoxLineBR.setLineWidth(1.5, 3);
+    this.smallBoxLineTL.setLineWidth(1.5, 2.8);
+    this.smallBoxLineTR.setLineWidth(1.5, 2.8);
+    this.smallBoxLineBL.setLineWidth(1.5, 2.8);
+    this.smallBoxLineBR.setLineWidth(1.5, 2.8);
 
     this.smallBoxContainer.add(this.smallBoxBorder);
 
     this.smallBoxContainer.setVisible(false);
 
     this.smallBoxContainer.x = this.promoterX;
-    this.smallBoxContainer.y = this.DNAposY;
+    this.smallBoxContainer.y = this.DNAposY1;
+  }
 
-    this.zoomBoxContainer = this.add.container();
+  createGameBox() {
+    this.gameBoxWidth = 0.58 * game.config.width;
+    this.gameBoxHeight = 0.75 * game.config.height;
+
+    this.gameBoxPosX = 0.5 * game.config.width;
+    this.gameBoxPosY = 0.59 * game.config.height;
+
+    this.zoomBoxContainer = this.add
+      .container()
+      .setScale(this.smallBoxWidth / this.gameBoxWidth);
 
     this.zoomBoxBorder = this.add.graphics();
-    this.zoomBoxBorder.lineStyle(0.7, 0x44336a);
+    this.zoomBoxBorder.lineStyle(6, 0x44336a);
     this.zoomBoxBorder.strokeRect(
-      -0.5 * this.smallBoxWidth,
-      -0.5 * this.smallBoxHeight,
-      this.smallBoxWidth,
-      this.smallBoxHeight
+      -0.5 * this.gameBoxWidth,
+      -0.5 * this.gameBoxHeight,
+      this.gameBoxWidth,
+      this.gameBoxHeight
     );
 
     this.gameBoxContainer = this.add.container();
     this.zoomBoxContainer.add(this.gameBoxContainer);
     this.zoomBoxContainer.add(this.zoomBoxBorder);
 
-    this.zoomBoxBG = this.add.graphics();
-    this.zoomBoxBG.fillStyle(0xafcfd8);
-    this.zoomBoxBG.fillRect(
-      -0.5 * this.smallBoxWidth,
-      -0.5 * this.smallBoxHeight,
-      this.smallBoxWidth,
-      this.smallBoxHeight
+    this.gameBoxBG = this.add.graphics();
+    this.gameBoxBG.fillStyle(0xafcfd8);
+    this.gameBoxBG.fillRect(
+      -0.5 * this.gameBoxWidth,
+      -0.5 * this.gameBoxHeight,
+      this.gameBoxWidth,
+      this.gameBoxHeight
     );
 
     this.gameBoxContainer.setAlpha(0);
 
-    this.gameBoxContainer.add(this.zoomBoxBG);
+    this.gameBoxContainer.add(this.gameBoxBG);
 
     this.zoomBoxContainer.setVisible(false);
 
     this.zoomBoxContainer.x = this.promoterX;
-    this.zoomBoxContainer.y = this.DNAposY;
-  }
+    this.zoomBoxContainer.y = this.DNAposY1;
 
-  createGameBox() {
-    const DNAstrandHeight = 0.08 * this.smallBoxHeight;
-    const DNAstrandOffsetY = 0.422 * this.smallBoxHeight;
+    const DNAstrandHeight = 0.06 * this.gameBoxHeight;
+    const DNAstrandOffsetY = 0.44 * this.gameBoxHeight;
 
     this.DNAtopStrand = this.add.graphics();
     this.DNAtopStrand.fillStyle(0xa295c5);
     this.DNAtopStrand.fillRect(
-      -0.5 * this.smallBoxWidth,
+      -0.5 * this.gameBoxWidth,
       -DNAstrandOffsetY - 0.5 * DNAstrandHeight,
-      this.smallBoxWidth,
+      this.gameBoxWidth,
       DNAstrandHeight
     );
 
     this.DNAbottomStrand = this.add.graphics();
     this.DNAbottomStrand.fillStyle(0x63568f);
     this.DNAbottomStrand.fillRect(
-      -0.5 * this.smallBoxWidth,
+      -0.5 * this.gameBoxWidth,
       DNAstrandOffsetY - 0.5 * DNAstrandHeight,
-      this.smallBoxWidth,
+      this.gameBoxWidth,
       DNAstrandHeight
     );
 
     this.gameBoxContainer.add(this.DNAtopStrand);
     this.gameBoxContainer.add(this.DNAbottomStrand);
 
-    this.nucleotideGraphics = this.add.container();
-    this.gameBoxContainer.add(this.nucleotideGraphics);
+    this.nucleotideContainer = this.add.container();
+    this.gameBoxContainer.add(this.nucleotideContainer);
 
     //*********CREATE DNA NUCLEOTIDES **********//
-
-    this.DNAnucleotideDeltaX = this.smallBoxWidth / 5;
+    this.DNAnucleotideMargin = 0.13 * this.gameBoxWidth;
+    this.DNAnucleotideDeltaX =
+      (this.gameBoxWidth - 2 * this.DNAnucleotideMargin) / 4;
+    this.nucleotideBaseScale = 0.6;
 
     this.topDNAnucleotides.forEach((base, index) => {
       var topDNAnucleotide = this.add
         .sprite(
-          -0.5 * this.smallBoxWidth +
-            0.5 * this.DNAnucleotideDeltaX +
+          -0.5 * this.gameBoxWidth +
+            this.DNAnucleotideMargin +
             index * this.DNAnucleotideDeltaX,
           -DNAstrandOffsetY + 0.5 * DNAstrandHeight,
           "transcription_graphics",
           base + "top.png"
         )
-        .setScale(1 / 16)
+        .setScale(this.nucleotideBaseScale)
         .setOrigin(0.5, 0.12);
-      this.nucleotideGraphics.add(topDNAnucleotide);
+      this.nucleotideContainer.add(topDNAnucleotide);
     });
 
     this.bottomDNAnucleotides.forEach((base, index) => {
       var bottomDNAnucleotide = this.add
         .sprite(
-          -0.5 * this.smallBoxWidth +
-            0.5 * this.DNAnucleotideDeltaX +
+          -0.5 * this.gameBoxWidth +
+            this.DNAnucleotideMargin +
             index * this.DNAnucleotideDeltaX,
           DNAstrandOffsetY - 0.5 * DNAstrandHeight,
           "transcription_graphics",
           base + "bottom.png"
         )
-        .setScale(1 / 16)
+        .setScale(this.nucleotideBaseScale)
         .setOrigin(0.5, 0.88);
-      this.nucleotideGraphics.add(bottomDNAnucleotide);
+      this.nucleotideContainer.add(bottomDNAnucleotide);
     });
   }
 
@@ -775,30 +851,32 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.zoomBoxContainer,
-      x: 0.5 * game.config.width,
-      y: 0.61 * game.config.height,
-      scale: 10,
+      x: this.gameBoxPosX,
+      y: this.gameBoxPosY,
+      scale: 1,
       duration: 800,
       ease: "Sine.Out",
+      onComplete: this.showFreeNucleotides,
+      onCompleteScope: this,
     });
 
     this.tweens.add({
       targets: this.RNApoly,
-      y: 0.2 * game.config.height,
+      y: this.DNAposY2,
       duration: 800,
       ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.DNAcontainer,
-      y: 0.2 * game.config.height,
+      y: this.DNAposY2,
       duration: 800,
       ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.smallBoxContainer,
-      y: 0.2 * game.config.height,
+      y: this.DNAposY2,
       duration: 800,
       ease: "Sine.Out",
     });
@@ -812,32 +890,32 @@ class TranscriptionMinigameScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.smallBoxLineTL,
-      y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
-      scaleX: 3,
+      y: this.DNAposY2 - 0.5 * this.smallBoxHeight,
+      scaleX: 2.36,
       duration: 800,
       ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.smallBoxLineTR,
-      y: 0.2 * game.config.height - 0.5 * this.smallBoxHeight,
-      scaleX: 11.75,
+      y: this.DNAposY2 - 0.5 * this.smallBoxHeight,
+      scaleX: 12.15,
       duration: 800,
       ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.smallBoxLineBL,
-      y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
-      scaleX: 8.65,
+      y: this.DNAposY2 + 0.5 * this.smallBoxHeight,
+      scaleX: 8.82,
       duration: 800,
       ease: "Sine.Out",
     });
 
     this.tweens.add({
       targets: this.smallBoxLineBR,
-      y: 0.2 * game.config.height + 0.5 * this.smallBoxHeight,
-      scaleX: 14,
+      y: this.DNAposY2 + 0.5 * this.smallBoxHeight,
+      scaleX: 14.8,
       duration: 800,
       ease: "Sine.Out",
     });
@@ -847,35 +925,159 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.freeNucleotides = [];
 
     const nucleotidesToCreate = ["A", "T", "G", "C", "U"];
+    const nucleotideRotations = [-5, 4, 2, -3, 6];
+
+    this.nucleotideMarginL = 0.15 * this.gameBoxWidth;
+    this.nucleotideMarginR = 0.15 * this.gameBoxWidth;
+    this.nucleotideDeltaX =
+      (this.gameBoxWidth - this.nucleotideMarginL - this.nucleotideMarginR) / 4;
+
+    this.nucleotideOddY = -0.13 * this.gameBoxHeight;
+    this.nucleotideEvenY = -0.04 * this.gameBoxHeight;
+
     nucleotidesToCreate.forEach((base, index) => {
-      this.createFreeNucleotide(base, index);
+      this.createFreeNucleotide(
+        base,
+        index,
+        -0.5 * this.gameBoxWidth +
+          this.nucleotideMarginL +
+          index * this.nucleotideDeltaX,
+        index % 2 === 0 ? this.nucleotideOddY : this.nucleotideEvenY,
+        nucleotideRotations[index]
+      );
     });
   }
 
-  createFreeNucleotide(base, index) {
-    let nucleotide = this.add.container().setScale(1 / 16);
+  createFreeNucleotide(base, index, x, y, rotation) {
+    let nucleotide = this.add.container().setScale(0);
+
+    nucleotide.sendToStartingPosOnRelease = true;
+    nucleotide.bringToFrontOnDragStart = true;
+
+    nucleotide.x = x;
+    nucleotide.y = y;
+
+    nucleotide.vx = 0;
+    nucleotide.vy = 0;
+
+    nucleotide.setRotation((rotation * Math.PI) / 180);
 
     nucleotide.base = base;
     nucleotide.index = index;
+    nucleotide.startingX = nucleotide.x;
+    nucleotide.startingY = nucleotide.y;
+    nucleotide.startingRotation = nucleotide.rotation;
+
+    nucleotide.brownianMotionCoeff = 0.04;
+    nucleotide.dragCoeff = 0.1;
+
+    const maxStartingDeltaPos = 0.02 * this.gameBoxWidth;
+
+    nucleotide.minStartingX = nucleotide.x - maxStartingDeltaPos;
+    nucleotide.maxStartingX = nucleotide.x + maxStartingDeltaPos;
+    nucleotide.minStartingY = nucleotide.y - maxStartingDeltaPos;
+    nucleotide.maxStartingY = nucleotide.y + maxStartingDeltaPos;
 
     const connectorType = base === "T" ? "DNA" : "RNA";
 
+    const graphicsOffsetX = 0.038 * this.gameBoxWidth;
+    const graphicsOffsetY = 0.031 * this.gameBoxHeight;
+
     nucleotide.connectorL = this.add
-      .sprite(0, 0, "transcription_graphics", connectorType + "connector.png")
+      .sprite(
+        graphicsOffsetX,
+        graphicsOffsetY,
+        "transcription_graphics",
+        connectorType + "connector.png"
+      )
       .setOrigin(0.68, 1.85);
     nucleotide.connectorR = this.add
-      .sprite(0, 0, "transcription_graphics", connectorType + "connector.png")
+      .sprite(
+        graphicsOffsetX,
+        graphicsOffsetY,
+        "transcription_graphics",
+        connectorType + "connector.png"
+      )
       .setOrigin(0.68, 1.85);
+    nucleotide.baseGraphic = this.add.sprite(
+      graphicsOffsetX,
+      graphicsOffsetY,
+      "transcription_graphics",
+      base + "top.png"
+    );
 
     nucleotide.add(nucleotide.connectorL);
     nucleotide.add(nucleotide.connectorR);
+    nucleotide.add(nucleotide.baseGraphic);
 
-    nucleotide.add(
-      this.add.sprite(0, 0, "transcription_graphics", base + "top.png")
-    );
+    nucleotide.setSize(0.23 * this.gameBoxWidth, 0.29 * this.gameBoxHeight);
+
+    nucleotide.minX =
+      0.5 * (-this.gameBoxWidth + nucleotide.width * this.nucleotideBaseScale);
+    nucleotide.maxX =
+      0.5 * (this.gameBoxWidth - nucleotide.width * this.nucleotideBaseScale);
+    nucleotide.minY =
+      0.5 *
+      (-this.gameBoxHeight + nucleotide.height * this.nucleotideBaseScale);
+    nucleotide.maxY =
+      0.5 * (this.gameBoxHeight - nucleotide.height * this.nucleotideBaseScale);
 
     this.gameBoxContainer.add(nucleotide);
 
     this.freeNucleotides.push(nucleotide);
+  }
+
+  showFreeNucleotides() {
+    this.freeNucleotides.forEach((nucleotide, index) => {
+      nucleotide.tweenRunning = true;
+
+      this.tweens.add({
+        targets: nucleotide,
+        scale: this.nucleotideBaseScale,
+        duration: 400,
+        delay: index * 200,
+        ease: "Back.Out",
+        onComplete: this.activateFreeNucleotide,
+        onCompleteScope: this,
+        onCompleteParams: nucleotide,
+      });
+    });
+  }
+
+  activateFreeNucleotide(tween) {
+    const nucleotide = tween.targets[0];
+
+    nucleotide.tweenRunning = false;
+    nucleotide.vx = 0;
+    nucleotide.vy = 0;
+
+    nucleotide.setInteractive();
+    this.input.setDraggable(nucleotide);
+  }
+
+  sendBackToStartingPos(nucleotide) {
+    const deltaX = nucleotide.x - nucleotide.startingX;
+    const deltaY = nucleotide.y - nucleotide.startingY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    nucleotide.sendBackToStartTween = this.tweens.add({
+      targets: nucleotide,
+      x: nucleotide.startingX,
+      y: nucleotide.startingY,
+      rotation: nucleotide.startingRotation,
+      duration: 3.5 * distance,
+      ease: "Quad.easeInOut",
+      onComplete: this.nucleotideTweenComplete,
+      onCompleteScope: this,
+      onCompleteParams: nucleotide,
+    });
+
+    nucleotide.tweenRunning = true;
+  }
+
+  nucleotideTweenComplete(tween) {
+    const nucleotide = tween.targets[0];
+    nucleotide.vx = 0;
+    nucleotide.vy = 0;
+    nucleotide.tweenRunning = false;
   }
 }
