@@ -76,7 +76,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
   }
 
   loadWebFonts() {
-    this.events.on("WEBFONT_LOADED", this.createInstructionBox, this);
+    this.events.on("WEBFONT_LOADED", this.createUIBoxes, this);
 
     var scene = this;
 
@@ -323,19 +323,24 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     });
   }
 
-  createInstructionBox() {
-    const instructionBoxGraphicsX = 0.053 * game.config.width;
-    const instructionBoxGraphicsY = 0.59 * game.config.height;
-    const instructionBoxGraphicsWidth = 0.256 * game.config.width;
-    const instructionBoxGraphicsHeight = 0.16 * game.config.height;
+  createUIBoxes() {
+    this.createTutBox1();
+    this.createScoreDisplay();
+  }
 
-    this.instructionBoxGroup = this.add.group();
+  createTutBox1() {
+    const tutBox1ContainerX = 0.05 * game.config.width;
+    const tutBox1ContainerY = 0.56 * game.config.height;
+    const tutBox1ContainerWidth = 0.26 * game.config.width;
+    const tutBox1ContainerHeight = 0.156 * game.config.height;
 
-    this.instructionBoxGroup.add(
+    this.tutBox1Container = this.add.container();
+
+    this.tutBox1Container.add(
       this.add
         .sprite(
-          instructionBoxGraphicsX + 0.53 * instructionBoxGraphicsWidth,
-          instructionBoxGraphicsY + 0.55 * instructionBoxGraphicsHeight,
+          tutBox1ContainerX + 0.53 * tutBox1ContainerWidth,
+          tutBox1ContainerY + 0.55 * tutBox1ContainerHeight,
           "arrow"
         )
         .setOrigin(0.5, 1)
@@ -343,34 +348,94 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         .setRotation((-15 * Math.PI) / 180)
     );
 
-    const instructionBoxGraphics = this.add.graphics();
+    const tutBox1BG = this.add.graphics();
 
-    instructionBoxGraphics.fillStyle(0x1ab5b5);
-    instructionBoxGraphics.fillRoundedRect(
-      instructionBoxGraphicsX,
-      instructionBoxGraphicsY,
-      instructionBoxGraphicsWidth,
-      instructionBoxGraphicsHeight,
-      16
+    tutBox1BG.fillStyle(0x1ab5b5);
+    tutBox1BG.fillRoundedRect(
+      tutBox1ContainerX,
+      tutBox1ContainerY,
+      tutBox1ContainerWidth,
+      tutBox1ContainerHeight,
+      0.07 * tutBox1ContainerWidth
     );
 
-    this.instructionBoxGroup.add(instructionBoxGraphics);
+    this.tutBox1Container.add(tutBox1BG);
 
-    this.instructionBoxGroup.add(
-      this.add.text(
-        instructionBoxGraphicsX + 16,
-        instructionBoxGraphicsY + 14,
-        "Move the RNA polymerase\nonto the promoter region\nto begin transcription",
+    this.tutBox1Container.add(
+      this.add
+        .text(
+          tutBox1ContainerX + 0.5 * tutBox1ContainerWidth,
+          tutBox1ContainerY + 0.5 * tutBox1ContainerHeight,
+          "Move the RNA polymerase\nonto the promoter region\nto begin transcription",
+          {
+            fontFamily: "Lato",
+            fontSize: 18,
+            color: "#ffffff",
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+    );
+
+    this.tutBox1Container.setDepth(-2);
+  }
+
+  createScoreDisplay() {
+    const marginX = 0.02 * game.config.width;
+    const marginY = 0.016 * game.config.width;
+    const scoreDisplayWidth = 0.165 * game.config.width;
+    const scoreDisplayHeight = 0.195 * game.config.height;
+    const scoreDisplayX = game.config.width - marginX - scoreDisplayWidth;
+    const scoreDisplayY = game.config.height - marginY - scoreDisplayHeight;
+
+    this.scoreDisplay = this.add.container();
+
+    const scoreDisplayBG = this.add.graphics();
+
+    scoreDisplayBG.fillStyle(0x1ab5b5);
+    scoreDisplayBG.fillRoundedRect(
+      scoreDisplayX,
+      scoreDisplayY,
+      scoreDisplayWidth,
+      scoreDisplayHeight,
+      0.13 * scoreDisplayWidth
+    );
+
+    this.scoreDisplay.add(scoreDisplayBG);
+
+    this.scoreDisplay.add(
+      this.add
+        .text(
+          scoreDisplayX + 0.5 * scoreDisplayWidth,
+          scoreDisplayY + 0.31 * scoreDisplayHeight,
+          "Nucleotides\nadded:",
+          {
+            fontFamily: "Lato",
+            fontSize: 21,
+            color: "#ffffff",
+            align: "center",
+          }
+        )
+        .setOrigin(0.5)
+    );
+
+    this.scoreText = this.add
+      .text(
+        scoreDisplayX + 0.5 * scoreDisplayWidth,
+        scoreDisplayY + 0.747 * scoreDisplayHeight,
+        "0/12",
         {
           fontFamily: "Lato",
-          fontSize: 18,
+          fontSize: 28,
           color: "#ffffff",
           align: "center",
         }
       )
-    );
+      .setOrigin(0.5);
 
-    this.instructionBoxGroup.setDepth(-2);
+    this.scoreDisplay.add(this.scoreText);
+
+    this.scoreDisplay.setVisible(false);
   }
 
   createPromoterBox() {
@@ -490,8 +555,10 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     });
 
     this.promoterBox.setVisible(false);
-    this.instructionBoxGroup.clear(true);
-    this.instructionBoxGroup = null;
+
+    this.tutBox1Container.removeAll(true);
+    this.tutBox1Container.destroy();
+    this.tutBox1Container = null;
 
     this.playDNAopeningAnimPart1();
     this.showSmallBox();
@@ -925,7 +992,7 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     this.freeNucleotides = [];
 
     const nucleotidesToCreate = ["A", "T", "G", "C", "U"];
-    const nucleotideRotations = [-5, 4, 2, -3, 6];
+    const nucleotideRotations = [-5, 4, 2, -4, 6];
 
     this.nucleotideMarginL = 0.15 * this.gameBoxWidth;
     this.nucleotideMarginR = 0.15 * this.gameBoxWidth;
@@ -1039,13 +1106,18 @@ class TranscriptionMinigameScene extends Phaser.Scene {
         ease: "Back.Out",
         onComplete: this.activateFreeNucleotide,
         onCompleteScope: this,
-        onCompleteParams: nucleotide,
       });
     });
   }
 
   activateFreeNucleotide(tween) {
     const nucleotide = tween.targets[0];
+
+    const index = this.freeNucleotides.indexOf(tween.targets[0]);
+
+    if (index === 4) {
+      this.showStartGameUI();
+    }
 
     nucleotide.tweenRunning = false;
     nucleotide.vx = 0;
@@ -1065,10 +1137,9 @@ class TranscriptionMinigameScene extends Phaser.Scene {
       y: nucleotide.startingY,
       rotation: nucleotide.startingRotation,
       duration: 3.5 * distance,
-      ease: "Quad.easeInOut",
+      ease: "Sine.easeOut",
       onComplete: this.nucleotideTweenComplete,
       onCompleteScope: this,
-      onCompleteParams: nucleotide,
     });
 
     nucleotide.tweenRunning = true;
@@ -1079,5 +1150,16 @@ class TranscriptionMinigameScene extends Phaser.Scene {
     nucleotide.vx = 0;
     nucleotide.vy = 0;
     nucleotide.tweenRunning = false;
+  }
+
+  showStartGameUI() {
+    this.scoreDisplay.setAlpha(0);
+    this.scoreDisplay.setVisible(true);
+
+    this.tweens.add({
+      targets: this.scoreDisplay,
+      alpha: 1,
+      duration: 300,
+    });
   }
 }
